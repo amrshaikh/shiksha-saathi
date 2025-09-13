@@ -1,4 +1,17 @@
-exports.handler = async (event, context) => {
+/**
+ * Netlify Function: Gemini API Proxy
+ *
+ * Proxies chat and image requests from the frontend to the Google Gemini API securely.
+ *
+ * Supported payloads:
+ *   - Chat: { type: 'chat', payload: { contents: [...] } }
+ *   - Advanced: { model, endpoint, payload } (for image or other Gemini endpoints)
+ *
+ * Requires GEMINI_API_KEY as an environment variable in Netlify.
+ */
+
+exports.handler = async (event) => {
+    // Get Gemini API key from environment
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
         return {
@@ -7,11 +20,10 @@ exports.handler = async (event, context) => {
         };
     }
 
-
+    // Parse and validate request
     let model, endpoint, payload;
     try {
         const body = JSON.parse(event.body);
-        // Support {type, payload} for chat only, and {model, endpoint, payload} for advanced use
         if (body.type === 'chat') {
             model = 'gemini-1.5-pro';
             endpoint = 'generateContent';
@@ -33,8 +45,10 @@ exports.handler = async (event, context) => {
         };
     }
 
+    // Build Gemini API URL
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?key=${API_KEY}`;
 
+    // Proxy the request to Gemini API
     try {
         const apiResponse = await fetch(apiUrl, {
             method: 'POST',
