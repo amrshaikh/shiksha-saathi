@@ -803,7 +803,7 @@
                 allChats[activeChatId].history = conversationHistory;
                 saveStateToStorage();
             }
-            generateSpeech(text, aiBubble);
+            // ...speak button and TTS removed...
         }
 
         // --- GEMINI API CALLS ---
@@ -813,15 +813,21 @@
             const systemPrompt = `You are ShikshaSaathi, a friendly AI teacher for children in India. Respond in ${currentLanguage === 'hi-IN' ? 'Hindi' : 'English'}. Keep answers simple, encouraging, and short.`;
 
             try {
+                // Only send user and model messages to Gemini
+                const geminiHistory = conversationHistory.map(msg => {
+                    if (msg.role === 'user') {
+                        return { role: 'user', parts: [{ text: msg.parts[0].text }] };
+                    } else {
+                        return { role: 'model', parts: [{ text: msg.parts[0].text }] };
+                    }
+                });
                 const response = await fetch('/.netlify/functions/gemini-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: 'gemini-2.5-flash-preview-05-20',
-                        endpoint: 'generateContent',
+                        type: 'chat',
                         payload: {
-                            contents: conversationHistory,
-                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                            contents: geminiHistory
                         }
                     })
                 });
@@ -874,67 +880,7 @@
             }
         }
         
-        async function generateSpeech(text, targetBubble) {
-            try {
-                const response = await fetch('/.netlify/functions/gemini-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: "gemini-2.5-flash-preview-tts",
-                        endpoint: 'generateContent',
-                        payload: {
-                            contents: [{ parts: [{ text }] }],
-                            generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } }
-                        }
-                    })
-                });
-
-                if (!response.ok) throw new Error(`TTS API Error: ${response.statusText}`);
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType?.startsWith("audio/")) {
-                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, 1, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-                    const audio = new Audio(audioUrl);
-                    const audioBtn = document.createElement('button');
-                    audioBtn.innerHTML = '🔊';
-                    audioBtn.className = 'ml-2 opacity-50 hover:opacity-100 transition-opacity audio-btn';
-                    audioBtn.onclick = () => {
-                        if (audio.paused) {
-                            if (currentlyPlayingAudio) currentlyPlayingAudio.pause();
-                            audio.play();
-                            currentlyPlayingAudio = audio;
-                        } else {
-                            audio.pause();
-                            currentlyPlayingAudio = null;
-                        }
-                    };
-                    audio.onplay = () => {
-                        document.querySelectorAll('.audio-btn').forEach(btn => btn.innerHTML = '🔊');
-                        audioBtn.innerHTML = '⏸️';
-                    };
-                    audio.onpause = () => audioBtn.innerHTML = '🔊';
-                    audio.onended = () => {
-                        audioBtn.innerHTML = '🔊';
-                        currentlyPlayingAudio = null;
-                    };
-                    targetBubble.appendChild(audioBtn);
-                }
-            } catch (error) {
-                console.error("TTS API Error:", error);
-                const audioBtn = document.createElement('button');
-                audioBtn.innerHTML = '🔇';
-                audioBtn.className = 'ml-2 opacity-50 cursor-not-allowed';
-                audioBtn.title = 'Audio generation failed';
-                targetBubble.appendChild(audioBtn);
-            }
-        }
+    // ...generateSpeech and TTS logic removed...
 
         // --- GAMIFICATION & UTILITIES ---
         function updatePoints() {
@@ -979,39 +925,7 @@
             });
         }
         
-        // --- AUDIO UTILITY FUNCTIONS ---
-        function base64ToArrayBuffer(base64) {
-            const binary_string = window.atob(base64);
-            const len = binary_string.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binary_string.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        function pcmToWav(pcmData, numChannels, sampleRate) {
-            const buffer = new ArrayBuffer(44 + pcmData.length * 2);
-            const view = new DataView(buffer);
-            const writeString = (view, offset, string) => {
-                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
-            };
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + pcmData.length * 2, true);
-            writeString(view, 8, 'WAVE');
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2 * numChannels, true);
-            view.setUint16(32, numChannels * 2, true);
-            view.setUint16(34, 16, true);
-            writeString(view, 36, 'data');
-            view.setUint32(40, pcmData.length * 2, true);
-            for (let i = 0; i < pcmData.length; i++) view.setInt16(44 + i * 2, pcmData[i], true);
-            return new Blob([view], { type: 'audio/wav' });
-        }
+    // ...audio utility functions removed...
     </script>
 </body>
 </html>
