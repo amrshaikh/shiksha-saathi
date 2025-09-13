@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShikshaSaathi - GenAI Teaching Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        #main-container {
+            height: 100vh;
+            display: flex;
+        }
+        #sidebar {
+            width: 280px;
+            background-color: rgba(0,0,0,0.1);
+            transition: margin-left 0.3s ease-in-out;
+        }
+        #chat-container {
+            flex-grow: 1;
+        }
+        #chat-window-wrapper {
+            position: relative;
+            flex-grow: 1;
+        }
+        #chat-window {
+           position: absolute;
+           top: 0;
+           left: 0;
+           right: 0;
+           bottom: 0;
+           height: 100%;
+        }
+        .chat-bubble {
+            max-width: 80%;
+            padding: 14px 20px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 1.05rem;
+        }
+        .user-bubble {
+            background-color: #ffffff;
+            color: #333;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .ai-bubble {
+            background-color: #F3F4F6;
+            color: #1F2937;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .badge {
+            transition: all 0.3s ease;
+            font-size: 1.5rem;
+        }
+        .badge.earned {
+            transform: scale(1.1);
+            filter: none;
+            opacity: 1;
+        }
+        .badge.not-earned {
+            filter: grayscale(80%);
+            opacity: 0.5;
+        }
+        .loader {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 3px solid #6B7280;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #mic-btn.recording {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.6); }
+        .lang-btn {
+            border: 1px solid white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .lang-btn.active {
+            background-color: white;
+            color: #764ba2;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+        .history-title {
+             cursor: pointer;
+             flex-grow: 1;
+             text-overflow: ellipsis;
+             overflow: hidden;
+             white-space: nowrap;
+        }
+        .history-item:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        .history-item.active {
+            background-color: rgba(255,255,255,0.2);
+            font-weight: 600;
+        }
+        .options-btn {
+            padding: 4px;
+            border-radius: 50%;
+            opacity: 0.6;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .options-btn:hover {
+             background-color: rgba(255,255,255,0.2);
+             opacity: 1;
+        }
+
+        #history-menu {
+            position: absolute;
+            background-color: #4A5568;
+            color: white;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+         #history-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+        #history-menu button:hover {
+            background-color: #2D3748;
+        }
+        
+        #autocomplete-suggestions {
+            position: absolute;
+            bottom: 75px; /* Position above the form */
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            z-index: 20;
+        }
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .suggestion-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100%;
+                z-index: 50;
+                margin-left: -280px;
+                 background-color: rgba(0,0,0,0.3);
+                 backdrop-filter: blur(5px);
+            }
+            #sidebar.open {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-900">
+
+    <div id="main-container">
+        <div id="sidebar" class="flex flex-col text-white p-3">
+            <button id="new-chat-btn" class="w-full text-left p-3 mb-4 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                New Chat
+            </button>
+            <div id="history-list" class="flex-grow overflow-y-auto space-y-1">
+                <!-- Chat history will be populated here -->
+            </div>
+        </div>
+
+        <div id="chat-container" class="container mx-auto max-w-4xl h-screen flex flex-col p-4 md:p-6 relative">
+            <header class="text-center mb-4 text-white">
+                <div class="flex items-center justify-between">
+                     <button id="menu-btn" class="md:hidden text-white p-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <h1 class="text-4xl font-bold flex items-center justify-center gap-2 flex-grow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 011.087.124l1.38 1.381a1 1 0 001.414 0l1.38-1.381a.999.999 0 011.087-.124l2.646-1.323a1 1 0 000-1.84l-7-3zM5 9.449l-3 1.5V15a1 1 0 001 1h4a1 1 0 001-1v-4.051l-3-1.5zM15 9.449l-3 1.5V15a1 1 0 001 1h4a1 1 0 001-1v-4.051l-3-1.5z" /></svg>
+                        ShikshaSaathi
+                    </h1>
+                     <div class="w-8"></div> <!-- Spacer -->
+                </div>
+                <div id="lang-switcher" class="mt-2 flex justify-center gap-2">
+                    <button id="lang-en" class="lang-btn">English</button>
+                    <button id="lang-hi" class="lang-btn">हिंदी</button>
+                </div>
+            </header>
+
+            <div class="bg-white/30 backdrop-blur-sm p-3 rounded-xl mb-4 shadow-lg flex justify-between items-center text-white">
+                <div class="flex items-center space-x-2">
+                    <span class="text-yellow-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>
+                    </span>
+                    <span id="points-label" class="font-semibold text-lg">Points: <span id="points">0</span></span>
+                </div>
+                <div id="badges" class="flex items-center space-x-2"></div>
+            </div>
+
+            <div id="chat-window-wrapper" class="bg-white/20 backdrop-blur-sm rounded-xl shadow-inner overflow-hidden">
+                <div id="chat-window" class="p-4 overflow-y-auto flex flex-col space-y-4">
+                    <!-- Chat messages will be populated here -->
+                </div>
+            </div>
+
+             <div id="autocomplete-suggestions" class="hidden"></div>
+
+
+            <form id="chat-form" class="mt-4">
+                <div class="flex items-center bg-white rounded-full p-2 shadow-xl">
+                    <div class="flex-1 relative h-10">
+                        <input type="text" id="chat-input" class="absolute inset-0 w-full h-full bg-transparent text-gray-800 placeholder-gray-500 focus:outline-none px-4 text-lg" autocomplete="off">
+                        <canvas id="waveform-canvas" class="absolute inset-0 w-full h-full hidden rounded-full"></canvas>
+                    </div>
+                    <button type="button" id="mic-btn" class="p-3 rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path d="M5.5 8.5a.5.5 0 01.5.5v1.5a4 4 0 004 4h0a4 4 0 004-4V9a.5.5 0 011 0v1.5a5 5 0 01-5 5h0a5 5 0 01-5-5V9a.5.5 0 01.5-.5z" /></svg>
+                    </button>
+                    <button type="submit" id="send-btn" class="p-3 ml-2 bg-green-500 rounded-full hover:bg-green-600 focus:outline-none transition-colors shadow-md">
+                        <svg id="send-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- History Context Menu -->
+    <div id="history-menu" class="hidden">
+        <button id="rename-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+            Rename
+        </button>
+        <button id="delete-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+            Delete
+        </button>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full">
+            <h3 class="text-xl font-bold text-gray-800">Delete Chat?</h3>
+            <p class="text-gray-600 my-2">Are you sure you want to permanently delete this chat?</p>
+            <div class="flex justify-end gap-3 mt-4">
+                <button id="cancel-delete-btn" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DOM ELEMENTS ---
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const micBtn = document.getElementById('mic-btn');
+        const sendBtn = document.getElementById('send-btn');
+        const pointsEl = document.getElementById('points');
+        const badgesEl = document.getElementById('badges');
+        const langEnBtn = document.getElementById('lang-en');
+        const langHiBtn = document.getElementById('lang-hi');
+        const waveformCanvas = document.getElementById('waveform-canvas');
+        const canvasCtx = waveformCanvas.getContext('2d');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const historyList = document.getElementById('history-list');
+        const sidebar = document.getElementById('sidebar');
+        const menuBtn = document.getElementById('menu-btn');
+        const historyMenu = document.getElementById('history-menu');
+        const renameBtn = document.getElementById('rename-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const deleteModal = document.getElementById('delete-modal');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const autocompleteSuggestions = document.getElementById('autocomplete-suggestions');
+
+        // --- STATE MANAGEMENT ---
+        let conversationHistory = [];
+        let allChats = {};
+        let activeChatId = null;
+        let points = 0;
+        let currentLanguage = 'en-US';
+        let isRecording = false;
+        let currentlyPlayingAudio = null;
+        let audioContext, analyser, sourceNode, dataArray, animationFrameId, mediaStream;
+        let chatToDelete = null;
+        let chatToRename = null;
+
+        const badges = [
+            { threshold: 1, name: { "en-US": "First Step", "hi-IN": "पहला कदम" }, icon: "🌱", earned: false },
+            { threshold: 5, name: { "en-US": "Curious Learner", "hi-IN": "जिज्ञासु शिक्षार्थी" }, icon: "💡", earned: false },
+            { threshold: 10, name: { "en-US": "Knowledge Seeker", "hi-IN": "ज्ञान साधक" }, icon: "📚", earned: false },
+            { threshold: 20, name: { "en-US": "AI Explorer", "hi-IN": "एआई एक्सप्लोरर" }, icon: "🚀", earned: false },
+        ];
+        
+        const uiStrings = {
+            "en-US": {
+                initialMessage: "Hello! I am ShikshaSaathi. Ask me anything by typing or using the microphone.",
+                inputPlaceholder: "Ask your question here...",
+                pointsLabel: "Points:",
+                badgeEarned: "New Badge Earned!",
+                getBadgeTitle: (b) => `${b.name[currentLanguage]} (${b.earned ? 'Earned!' : `Ask ${b.threshold} questions`})`,
+                speechError: "Sorry, I couldn't understand your voice. Please try again.",
+                aiError: "Sorry, I couldn't get a response. Please ask again.",
+                connectionError: "An error occurred connecting to the AI. Please check your connection and try again.",
+                imageError: "Sorry, I couldn't create an image for that. Please ask something else.",
+                imageGenError: "An error occurred while generating the image. Please try again.",
+                suggestions: [
+                    "Explain the water cycle",
+                    "Tell me about the Mughal Empire",
+                    "What is photosynthesis?",
+                    "Help me with a math problem",
+                    "Who was Albert Einstein?",
+                    "How do volcanoes erupt?"
+                ]
+            },
+            "hi-IN": {
+                initialMessage: "नमस्ते! मैं शिक्षा-साथी हूँ। आप मुझसे कोई भी सवाल पूछ सकते हैं। टाइप करें या माइक का बटन दबा कर बोलें।",
+                inputPlaceholder: "यहाँ अपना सवाल पूछें...",
+                pointsLabel: "अंक:",
+                badgeEarned: "नया बैज मिला!",
+                getBadgeTitle: (b) => `${b.name[currentLanguage]} (${b.earned ? 'मिल गया!' : `${b.threshold} सवाल पूछें`})`,
+                speechError: "माफ़ करें, मुझे आपकी आवाज़ समझ नहीं आई। कृपया फिर से प्रयास करें।",
+                aiError: "माफ़ करें, मैं जवाब नहीं दे सका। कृपया फिर से पूछें।",
+                connectionError: "AI से कनेक्ट करने में कोई त्रुटि हुई। कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।",
+                imageError: "माफ़ करें, मैं इसके लिए कोई चित्र नहीं बना सका। कृपया कुछ और पूछें।",
+                imageGenError: "चित्र बनाने में कोई त्रुटि हुई। कृपया पुन: प्रयास करें।",
+                 suggestions: [
+                    "जल चक्र के बारे में बताएं",
+                    "मुझे मुगल साम्राज्य के बारे में बताएं",
+                    "प्रकाश संश्लेषण क्या है?",
+                    "गणित की समस्या में मेरी मदद करें",
+                    "अल्बर्ट आइंस्टीन कौन थे?",
+                    "ज्वालामुखी कैसे फटते हैं?"
+                ]
+            }
+        };
+
+        // --- SPEECH RECOGNITION SETUP ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+        } else {
+            micBtn.disabled = true;
+        }
+
+        // --- EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', initializeApp);
+        chatForm.addEventListener('submit', handleSendMessage);
+        langEnBtn.addEventListener('click', () => setLanguage('en-US'));
+        langHiBtn.addEventListener('click', () => setLanguage('hi-IN'));
+        newChatBtn.addEventListener('click', startNewChat);
+        menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+        chatInput.addEventListener('input', handleAutocomplete);
+        chatInput.addEventListener('blur', () => {
+             // Delay hiding to allow click on suggestion
+            setTimeout(() => autocompleteSuggestions.classList.add('hidden'), 150);
+        });
+        
+        // Modal and Menu listeners
+        renameBtn.addEventListener('click', handleRenameClick);
+        deleteBtn.addEventListener('click', handleDeleteClick);
+        cancelDeleteBtn.addEventListener('click', () => deleteModal.classList.add('hidden'));
+        confirmDeleteBtn.addEventListener('click', confirmDelete);
+        
+        // Close menu if clicked outside
+        document.addEventListener('click', (e) => {
+            if (!historyMenu.contains(e.target) && !e.target.closest('.options-btn')) {
+                historyMenu.classList.add('hidden');
+            }
+        });
+
+        if (recognition) {
+            micBtn.addEventListener('click', toggleRecording);
+            recognition.onresult = handleSpeechResult;
+            recognition.onstart = () => updateRecordingUI(true);
+            recognition.onerror = (e) => addMessage('ai', uiStrings[currentLanguage].speechError, 'text');
+        }
+
+        // --- APP INITIALIZATION ---
+        function initializeApp() {
+            loadStateFromStorage();
+            renderHistorySidebar();
+            if (!activeChatId || !allChats[activeChatId]) {
+                startNewChat();
+            } else {
+                loadChat(activeChatId);
+            }
+        }
+        
+        // --- CHAT & HISTORY MANAGEMENT ---
+        function startNewChat() {
+            const newId = Date.now().toString();
+            activeChatId = newId;
+            conversationHistory = [];
+            allChats[newId] = { title: "New Chat", history: [] };
+            
+            chatWindow.innerHTML = '';
+            addAiTextMessage(uiStrings[currentLanguage].initialMessage, false);
+            autocompleteSuggestions.classList.add('hidden');
+
+
+            saveStateToStorage();
+            renderHistorySidebar();
+            if(sidebar.classList.contains('open')) sidebar.classList.remove('open');
+        }
+
+        function loadChat(chatId) {
+            if (!allChats[chatId]) return;
+            activeChatId = chatId;
+            conversationHistory = allChats[chatId].history;
+            autocompleteSuggestions.classList.add('hidden');
+            
+            chatWindow.innerHTML = '';
+            if (conversationHistory.length === 0) {
+                 addAiTextMessage(uiStrings[currentLanguage].initialMessage, false);
+            } else {
+                conversationHistory.forEach(msg => {
+                    if (msg.role === 'user') {
+                        addMessage('user', msg.parts[0].text, 'text');
+                    } else if (msg.role === 'model') {
+                        addAiTextMessage(msg.parts[0].text, false);
+                    }
+                });
+            }
+
+
+            renderHistorySidebar();
+            saveStateToStorage();
+             if(sidebar.classList.contains('open')) sidebar.classList.remove('open');
+        }
+
+        function renderHistorySidebar() {
+            historyList.innerHTML = '';
+            Object.keys(allChats).sort((a,b) => b-a).forEach(chatId => {
+                const chat = allChats[chatId];
+                const item = document.createElement('div');
+                item.className = `history-item ${chatId === activeChatId ? 'active' : ''}`;
+                item.dataset.chatId = chatId;
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'history-title';
+                titleSpan.textContent = chat.title;
+                titleSpan.onclick = () => loadChat(chatId);
+
+                const optionsBtn = document.createElement('button');
+                optionsBtn.className = 'options-btn';
+                optionsBtn.innerHTML = '•••';
+                optionsBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openHistoryMenu(chatId, optionsBtn);
+                }
+                
+                item.appendChild(titleSpan);
+                item.appendChild(optionsBtn);
+                historyList.appendChild(item);
+            });
+        }
+        
+        // --- HISTORY ITEM ACTIONS ---
+        function openHistoryMenu(chatId, button) {
+            const rect = button.getBoundingClientRect();
+            historyMenu.style.top = `${rect.bottom + 5}px`;
+            historyMenu.style.left = `${rect.left - 100}px`;
+            historyMenu.classList.remove('hidden');
+            chatToRename = chatId;
+            chatToDelete = chatId;
+        }
+        
+        function handleRenameClick() {
+            historyMenu.classList.add('hidden');
+            const itemToRename = document.querySelector(`.history-item[data-chat-id="${chatToRename}"]`);
+            const titleSpan = itemToRename.querySelector('.history-title');
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = titleSpan.textContent;
+            input.className = 'bg-transparent border-b-2 border-white w-full focus:outline-none';
+            
+            titleSpan.replaceWith(input);
+            input.focus();
+
+            const saveRename = () => {
+                 const newTitle = input.value.trim();
+                 if (newTitle) {
+                     allChats[chatToRename].title = newTitle;
+                     saveStateToStorage();
+                 }
+                 renderHistorySidebar(); // Redraw to restore span
+            };
+
+            input.addEventListener('blur', saveRename);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') input.blur();
+                if (e.key === 'Escape') {
+                    input.value = allChats[chatToRename].title; // revert
+                    input.blur();
+                }
+            });
+        }
+
+        function handleDeleteClick() {
+            historyMenu.classList.add('hidden');
+            deleteModal.classList.remove('hidden');
+        }
+
+        function confirmDelete() {
+            delete allChats[chatToDelete];
+            saveStateToStorage();
+            deleteModal.classList.add('hidden');
+
+            if (activeChatId === chatToDelete) {
+                const remainingChatIds = Object.keys(allChats);
+                if (remainingChatIds.length > 0) {
+                    loadChat(remainingChatIds.sort((a,b) => b-a)[0]); // load most recent
+                } else {
+                    startNewChat();
+                }
+            } else {
+                renderHistorySidebar();
+            }
+        }
+
+        // --- LOCAL STORAGE ---
+        function saveStateToStorage() {
+            const appState = {
+                allChats,
+                activeChatId,
+                points,
+                badges
+            };
+            localStorage.setItem('shikshaSaathiState', JSON.stringify(appState));
+        }
+
+        function loadStateFromStorage() {
+            const savedState = localStorage.getItem('shikshaSaathiState');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                allChats = parsedState.allChats || {};
+                activeChatId = parsedState.activeChatId || null;
+                points = parsedState.points || 0;
+                // Make sure badges state is loaded correctly
+                const savedBadges = parsedState.badges || [];
+                badges.forEach(b => {
+                    const saved = savedBadges.find(sb => sb.icon === b.icon);
+                    if (saved) b.earned = saved.earned;
+                });
+            }
+            updatePointsDisplay();
+            updateBadgesDisplay();
+        }
+
+        // --- UI & LANGUAGE FUNCTIONS ---
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            if(recognition) recognition.lang = lang;
+            
+            langEnBtn.classList.toggle('active', lang === 'en-US');
+            langHiBtn.classList.toggle('active', lang === 'hi-IN');
+            
+            const strings = uiStrings[lang];
+            
+            chatInput.placeholder = strings.inputPlaceholder;
+            document.getElementById('points-label').innerHTML = `${strings.pointsLabel} <span id="points">${points}</span>`;
+            updateBadgesDisplay();
+
+            // Reload current chat to update language of initial message if it's a new chat
+            if (allChats[activeChatId] && allChats[activeChatId].history.length === 0) {
+                 chatWindow.innerHTML = '';
+                 addAiTextMessage(strings.initialMessage, false);
+            }
+        }
+        
+        function handleAutocomplete() {
+            const inputText = chatInput.value.trim().toLowerCase();
+            autocompleteSuggestions.innerHTML = '';
+
+            if (inputText.length < 2) {
+                autocompleteSuggestions.classList.add('hidden');
+                return;
+            }
+
+            const filteredSuggestions = uiStrings[currentLanguage].suggestions.filter(s => 
+                s.toLowerCase().includes(inputText)
+            );
+
+            if (filteredSuggestions.length > 0) {
+                autocompleteSuggestions.classList.remove('hidden');
+                filteredSuggestions.forEach(suggestion => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.textContent = suggestion;
+                    item.onclick = () => {
+                        chatInput.value = suggestion;
+                        autocompleteSuggestions.classList.add('hidden');
+                        chatInput.focus();
+                    };
+                    autocompleteSuggestions.appendChild(item);
+                });
+            } else {
+                autocompleteSuggestions.classList.add('hidden');
+            }
+        }
+
+
+        function updateRecordingUI(isNowRecording) {
+            isRecording = isNowRecording;
+            micBtn.classList.toggle('recording', isRecording);
+            micBtn.classList.toggle('bg-red-200', isRecording);
+            const isInputVisible = !isNowRecording;
+            chatInput.classList.toggle('hidden', !isInputVisible);
+            waveformCanvas.classList.toggle('hidden', isInputVisible);
+            if (!isInputVisible) {
+                const container = waveformCanvas.parentElement;
+                waveformCanvas.width = container.offsetWidth * window.devicePixelRatio;
+                waveformCanvas.height = container.offsetHeight * window.devicePixelRatio;
+            }
+            const sendIcon = document.getElementById('send-icon');
+            if (isRecording) {
+                sendIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />`;
+            } else {
+                sendIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />`;
+            }
+        }
+
+        // --- CORE CHAT FUNCTIONS ---
+        async function toggleRecording() {
+            if (isRecording) {
+                if (recognition) recognition.stop();
+                if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+                if (audioContext) audioContext.close();
+                cancelAnimationFrame(animationFrameId);
+                updateRecordingUI(false);
+            } else {
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    if (recognition) recognition.start();
+                    setupAudioVisualizer();
+                } catch (err) {
+                    console.error("Microphone access denied:", err);
+                    addAiTextMessage("I need microphone access to hear you. Please enable it in your browser settings.", false);
+                }
+            }
+        }
+
+        function setupAudioVisualizer() {
+            if (!mediaStream) return;
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            sourceNode = audioContext.createMediaStreamSource(mediaStream);
+            sourceNode.connect(analyser);
+            analyser.fftSize = 512;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            drawWaveform();
+        }
+        
+        function drawWaveform() {
+            animationFrameId = requestAnimationFrame(drawWaveform);
+            analyser.getByteFrequencyData(dataArray);
+            canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            canvasCtx.fillStyle = 'rgba(55, 65, 81, 0.8)';
+            const barWidth = 2; 
+            const barSpacing = 3;
+            const numBars = Math.floor(waveformCanvas.width / (barWidth + barSpacing));
+            const step = Math.floor(dataArray.length / numBars);
+            let x = 0;
+            for (let i = 0; i < numBars; i++) {
+                let sum = 0;
+                for (let j = 0; j < step; j++) sum += dataArray[i * step + j];
+                const avg = sum / step;
+                const barHeight = (avg / 255) * waveformCanvas.height * 0.9;
+                if (barHeight < 1) continue;
+                const y = (waveformCanvas.height - barHeight) / 2;
+                canvasCtx.fillRect(x, y, barWidth, barHeight);
+                x += barWidth + barSpacing;
+            }
+        }
+        
+        function handleSpeechResult(event) {
+            const speechResult = event.results[0][0].transcript;
+            chatInput.value = speechResult;
+        }
+
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            if (isRecording) {
+                toggleRecording();
+                return;
+            }
+            const userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+            
+            autocompleteSuggestions.classList.add('hidden');
+            addMessage('user', userMessage, 'text');
+
+            const isFirstMessage = conversationHistory.length === 0;
+            conversationHistory.push({ role: "user", parts: [{ text: userMessage }] });
+            
+            if (isFirstMessage) {
+                allChats[activeChatId].title = userMessage;
+                renderHistorySidebar();
+            }
+            allChats[activeChatId].history = [...conversationHistory];
+            saveStateToStorage();
+
+            chatInput.value = '';
+            updatePoints();
+            
+            if (userMessage.toLowerCase().includes('draw') || userMessage.toLowerCase().includes('चित्र')) {
+                 generateImage(userMessage);
+            } else {
+                await getChatResponse();
+            }
+        }
+
+        function addMessage(sender, content, type) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `w-full flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
+            const contentContainer = document.createElement('div');
+            
+            if (type === 'text') {
+                contentContainer.textContent = content;
+            } else if (type === 'image') { // Only for AI generated images
+                bubble.classList.add('p-2', 'bg-white');
+                const img = document.createElement('img');
+                img.src = content;
+                img.alt = "Generated image";
+                img.className = 'rounded-lg w-full max-w-sm';
+                contentContainer.appendChild(img);
+            } else if (type === 'loading') {
+                contentContainer.innerHTML = `<div class="loader"></div>`;
+                bubble.id = 'loading-bubble';
+            }
+            
+            bubble.appendChild(contentContainer);
+            messageWrapper.appendChild(bubble);
+            chatWindow.appendChild(messageWrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return bubble;
+        }
+
+
+        function addAiTextMessage(text, addToHistory = true) {
+            const aiBubble = addMessage('ai', text, 'text');
+            if (addToHistory) {
+                conversationHistory.push({ role: "model", parts: [{ text: text }] });
+                allChats[activeChatId].history = conversationHistory;
+                saveStateToStorage();
+            }
+            generateSpeech(text, aiBubble);
+        }
+
+        // --- GEMINI API CALLS ---
+        async function getChatResponse() {
+            addMessage('ai', '', 'loading');
+            
+            const systemPrompt = `You are ShikshaSaathi, a friendly AI teacher for children in India. Respond in ${currentLanguage === 'hi-IN' ? 'Hindi' : 'English'}. Keep answers simple, encouraging, and short.`;
+
+            try {
+                const response = await fetch('/.netlify/functions/gemini-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'gemini-2.5-flash-preview-05-20',
+                        endpoint: 'generateContent',
+                        payload: {
+                            contents: conversationHistory,
+                            systemInstruction: { parts: [{ text: systemPrompt }] }
+                        }
+                    })
+                });
+
+                if(!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                const result = await response.json();
+                document.getElementById('loading-bubble')?.parentElement.remove();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                    addAiTextMessage(text, true);
+                } else {
+                    addAiTextMessage(uiStrings[currentLanguage].aiError, false);
+                }
+            } catch (error) {
+                console.error("Chat API Error:", error);
+                document.getElementById('loading-bubble')?.parentElement.remove();
+                addAiTextMessage(uiStrings[currentLanguage].connectionError, false);
+            }
+        }
+
+        async function generateImage(prompt) {
+             addMessage('ai', '', 'loading');
+             try {
+                const response = await fetch('/.netlify/functions/gemini-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'imagen-3.0-generate-002',
+                        endpoint: 'predict',
+                        payload: {
+                            instances: { prompt: `A very simple, clear, colorful educational diagram for a child: ${prompt}` },
+                            parameters: { "sampleCount": 1 }
+                        }
+                    })
+                });
+
+                if(!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                const result = await response.json();
+                document.getElementById('loading-bubble')?.parentElement.remove();
+                if (result.predictions?.[0]?.bytesBase64Encoded) {
+                    addMessage('ai', `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`, 'image');
+                } else {
+                    addAiTextMessage(uiStrings[currentLanguage].imageError, false);
+                }
+            } catch (error) {
+                console.error("Image API Error:", error);
+                document.getElementById('loading-bubble')?.parentElement.remove();
+                addAiTextMessage(uiStrings[currentLanguage].imageGenError, false);
+            }
+        }
+        
+        async function generateSpeech(text, targetBubble) {
+            try {
+                const response = await fetch('/.netlify/functions/gemini-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "gemini-2.5-flash-preview-tts",
+                        endpoint: 'generateContent',
+                        payload: {
+                            contents: [{ parts: [{ text }] }],
+                            generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } }
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`TTS API Error: ${response.statusText}`);
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType?.startsWith("audio/")) {
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, 1, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    const audio = new Audio(audioUrl);
+                    const audioBtn = document.createElement('button');
+                    audioBtn.innerHTML = '🔊';
+                    audioBtn.className = 'ml-2 opacity-50 hover:opacity-100 transition-opacity audio-btn';
+                    audioBtn.onclick = () => {
+                        if (audio.paused) {
+                            if (currentlyPlayingAudio) currentlyPlayingAudio.pause();
+                            audio.play();
+                            currentlyPlayingAudio = audio;
+                        } else {
+                            audio.pause();
+                            currentlyPlayingAudio = null;
+                        }
+                    };
+                    audio.onplay = () => {
+                        document.querySelectorAll('.audio-btn').forEach(btn => btn.innerHTML = '🔊');
+                        audioBtn.innerHTML = '⏸️';
+                    };
+                    audio.onpause = () => audioBtn.innerHTML = '🔊';
+                    audio.onended = () => {
+                        audioBtn.innerHTML = '🔊';
+                        currentlyPlayingAudio = null;
+                    };
+                    targetBubble.appendChild(audioBtn);
+                }
+            } catch (error) {
+                console.error("TTS API Error:", error);
+                const audioBtn = document.createElement('button');
+                audioBtn.innerHTML = '🔇';
+                audioBtn.className = 'ml-2 opacity-50 cursor-not-allowed';
+                audioBtn.title = 'Audio generation failed';
+                targetBubble.appendChild(audioBtn);
+            }
+        }
+
+        // --- GAMIFICATION & UTILITIES ---
+        function updatePoints() {
+            points++;
+            updatePointsDisplay();
+            checkAndAwardBadges();
+            saveStateToStorage();
+        }
+        
+        function updatePointsDisplay() {
+            document.getElementById('points').textContent = points;
+        }
+
+        function checkAndAwardBadges() {
+            let badgeAwarded = false;
+            badges.forEach(badge => {
+                if (!badge.earned && points >= badge.threshold) {
+                    badge.earned = true;
+                    badgeAwarded = true;
+                    showBadgeNotification(badge);
+                }
+            });
+            if (badgeAwarded) updateBadgesDisplay();
+        }
+        
+        function showBadgeNotification(badge) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-5 right-5 bg-white p-4 rounded-lg shadow-xl text-center text-gray-800 border-2 border-yellow-400 z-50';
+            notification.innerHTML = `<div class="text-2xl">${badge.icon}</div><div class="font-bold">${uiStrings[currentLanguage].badgeEarned}</div><div>${badge.name[currentLanguage]}</div>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        function updateBadgesDisplay() {
+            badgesEl.innerHTML = '';
+            badges.forEach(badge => {
+                const badgeEl = document.createElement('span');
+                badgeEl.className = `badge ${badge.earned ? 'earned' : 'not-earned'}`;
+                badgeEl.textContent = badge.icon;
+                badgeEl.title = uiStrings[currentLanguage].getBadgeTitle(badge);
+                badgesEl.appendChild(badgeEl);
+            });
+        }
+        
+        // --- AUDIO UTILITY FUNCTIONS ---
+        function base64ToArrayBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcmData, numChannels, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcmData.length * 2);
+            const view = new DataView(buffer);
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+            };
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2 * numChannels, true);
+            view.setUint16(32, numChannels * 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.length * 2, true);
+            for (let i = 0; i < pcmData.length; i++) view.setInt16(44 + i * 2, pcmData[i], true);
+            return new Blob([view], { type: 'audio/wav' });
+        }
+    </script>
+</body>
+</html>
