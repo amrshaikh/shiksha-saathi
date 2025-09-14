@@ -845,35 +845,10 @@
         // --- GEMINI API CALLS ---
         async function getChatResponse() {
             addMessage('ai', '', 'loading');
-            const systemPrompt = `You are ShikshaSaathi, a friendly AI teacher for children in India. Respond in ${currentLanguage === 'hi-IN' ? 'Hindi' : 'English'}. Keep answers simple, encouraging, and short.`;
-            const messages = [
-                { role: 'system', content: systemPrompt },
-                ...conversationHistory
-            ];
-            try {
-                const response = await fetch('/.netlify/functions/gemini-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: "qwen/qwen3-coder:free",
-                        messages
-                    })
-                });
-                if(!response.ok) throw new Error(`API Error: ${response.statusText}`);
-                const result = await response.json();
+            setTimeout(() => {
                 document.getElementById('loading-bubble')?.parentElement.remove();
-                // OpenRouter (OpenAI-compatible) returns result.choices[0].message.content
-                const text = result.choices?.[0]?.message?.content;
-                if (text) {
-                    addAiTextMessage(text, true);
-                } else {
-                    addAiTextMessage(uiStrings[currentLanguage].aiError, false);
-                }
-            } catch (error) {
-                console.error("Chat API Error:", error);
-                document.getElementById('loading-bubble')?.parentElement.remove();
-                addAiTextMessage(uiStrings[currentLanguage].connectionError, false);
-            }
+                addAiTextMessage("This is just a demo, app is still being built. This feature is under maintenance.", true);
+            }, 600);
         }
 
         async function generateImage(prompt) {
