@@ -1,73 +1,67 @@
 /**
- * Netlify Function: Gemini API Proxy
+ * Netlify Function: OpenRouter API Proxy
  *
- * Proxies chat and image requests from the frontend to the Google Gemini API securely.
+ * Proxies requests from the frontend to the OpenRouter API securely.
  *
  * Supported payloads:
- *   - Chat: { type: 'chat', payload: { contents: [...] } }
- *   - Advanced: { model, endpoint, payload } (for image or other Gemini endpoints)
+ * - Chat: { type: 'chat', payload: { messages: [...] } }
+ * - Image: { type: 'image', payload: { model: '...', prompt: '...' } }
  *
- * Requires GEMINI_API_KEY as an environment variable in Netlify.
+ * Requires OPENROUTER_API_KEY as an environment variable in Netlify.
  */
 
 exports.handler = async (event) => {
-    // Get Gemini API key from environment
-    const API_KEY = process.env.GEMINI_API_KEY;
+    // Get OpenRouter API key from environment
+    const API_KEY = process.env.OPENROUTER_API_KEY;
     if (!API_KEY) {
+        console.error("OPENROUTER_API_KEY not found in environment.");
         return {
             statusCode: 500,
             body: JSON.stringify({ error: "API key not found." }),
         };
     }
 
-    // Parse and validate request
-    let model, endpoint, payload;
+    // Forward {model, messages} directly to OpenRouter
+    let body;
     try {
-        const body = JSON.parse(event.body);
-        if (body.type === 'chat') {
-            model = 'gemini-1.5-pro';
-            endpoint = 'generateContent';
-            payload = body.payload;
-        } else if (body.model && body.endpoint && body.payload) {
-            model = body.model;
-            endpoint = body.endpoint;
-            payload = body.payload;
-        } else {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ error: "Missing or invalid model/type/endpoint/payload." }),
-            };
-        }
+        body = JSON.parse(event.body);
+        console.log("Incoming request body:", body);
     } catch (e) {
+        console.error("Invalid request body:", event.body, e);
         return {
             statusCode: 400,
-            body: JSON.stringify({ error: "Invalid request body." }),
+            body: JSON.stringify({ error: "Invalid request body.", details: event.body }),
         };
     }
 
-    // Build Gemini API URL
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?key=${API_KEY}`;
+    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+    console.log("Proxying to OpenRouter:", { apiUrl, body });
 
-    // Proxy the request to Gemini API
     try {
         const apiResponse = await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify(body),
         });
 
-        let responseData;
+        console.log("OpenRouter API status:", apiResponse.status);
         const text = await apiResponse.text();
+        console.log("OpenRouter API raw response:", text);
+        let responseData;
         try {
             responseData = text ? JSON.parse(text) : {};
         } catch (e) {
-            responseData = { error: 'Invalid JSON response from Gemini API', raw: text };
+            responseData = { error: 'Invalid JSON response from OpenRouter API', raw: text };
         }
 
         if (!apiResponse.ok) {
+            console.error("OpenRouter API error:", responseData);
             return {
                 statusCode: apiResponse.status,
-                body: JSON.stringify({ error: responseData.error || { message: "An unknown API error occurred." } }),
+                body: JSON.stringify({ error: responseData.error || { message: "An unknown API error occurred." }, details: responseData }),
             };
         }
 
@@ -76,9 +70,10 @@ exports.handler = async (event) => {
             body: JSON.stringify(responseData),
         };
     } catch (error) {
+        console.error("Error contacting OpenRouter API:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to connect to the Gemini API.' }),
+            body: JSON.stringify({ error: 'Failed to connect to the OpenRouter API.', details: error.toString() }),
         };
     }
 };

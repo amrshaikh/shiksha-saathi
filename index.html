@@ -1,931 +1,257 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShikshaSaathi - GenAI Teaching Assistant</title>
+    <title>ShikshaSaathi - Bridging Knowledge, Building Futures</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            overflow: hidden;
-        }
-        #main-container {
-            height: 100vh;
-            display: flex;
-        }
-        #sidebar {
-            width: 280px;
-            background-color: rgba(0,0,0,0.1);
-            transition: margin-left 0.3s ease-in-out;
-        }
-        #chat-container {
-            flex-grow: 1;
-        }
-        #chat-window-wrapper {
-            position: relative;
-            flex-grow: 1;
-        }
-        #chat-window {
-           position: absolute;
-           top: 0;
-           left: 0;
-           right: 0;
-           bottom: 0;
-           height: 100%;
-        }
-        .chat-bubble {
-            max-width: 80%;
-            padding: 14px 20px;
-            border-radius: 20px;
-            word-wrap: break-word;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            font-size: 1.05rem;
-        }
-        .user-bubble {
-            background-color: #ffffff;
-            color: #333;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-        }
-        .ai-bubble {
             background-color: #F3F4F6;
-            color: #1F2937;
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
         }
-        .badge {
-            transition: all 0.3s ease;
-            font-size: 1.5rem;
+        .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        .badge.earned {
-            transform: scale(1.1);
-            filter: none;
-            opacity: 1;
-        }
-        .badge.not-earned {
-            filter: grayscale(80%);
-            opacity: 0.5;
-        }
-        .loader {
-            width: 1.25rem;
-            height: 1.25rem;
-            border: 3px solid #6B7280;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
-        }
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #mic-btn.recording {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.6); }
-        .lang-btn {
-            border: 1px solid white;
-            padding: 4px 12px;
-            border-radius: 16px;
-            font-size: 0.9rem;
-            transition: all 0.2s ease;
-        }
-        .lang-btn.active {
-            background-color: white;
-            color: #764ba2;
-        }
-        .history-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 15px;
-            border-radius: 8px;
-            transition: background-color 0.2s ease;
-        }
-        .history-title {
-             cursor: pointer;
-             flex-grow: 1;
-             text-overflow: ellipsis;
-             overflow: hidden;
-             white-space: nowrap;
-        }
-        .history-item:hover {
-            background-color: rgba(255,255,255,0.1);
-        }
-        .history-item.active {
-            background-color: rgba(255,255,255,0.2);
+        /* Style for the active navigation link */
+        .nav-link-active {
+            color: #4f46e5; /* indigo-600 */
             font-weight: 600;
         }
-        .options-btn {
-            padding: 4px;
-            border-radius: 50%;
-            opacity: 0.6;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
         }
-        .options-btn:hover {
-             background-color: rgba(255,255,255,0.2);
-             opacity: 1;
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-
-        #history-menu {
-            position: absolute;
-            background-color: #4A5568;
-            color: white;
-            border-radius: 8px;
-            padding: 8px;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-            z-index: 100;
+        /* Animation styles */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
         }
-         #history-menu button {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            text-align: left;
+        .animate-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
         }
-        #history-menu button:hover {
-            background-color: #2D3748;
+        .feature-description {
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.4s ease-in-out, opacity 0.4s ease-in-out;
         }
-        
-        #autocomplete-suggestions {
-            position: absolute;
-            bottom: 75px; /* Position above the form */
-            left: 0;
-            right: 0;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
-            z-index: 20;
-        }
-        .suggestion-item {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .suggestion-item:last-child {
-            border-bottom: none;
-        }
-        .suggestion-item:hover {
-            background-color: #f3f4f6;
-        }
-
-        @media (max-width: 768px) {
-            #sidebar {
-                position: fixed;
-                left: 0;
-                top: 0;
-                height: 100%;
-                z-index: 50;
-                margin-left: -280px;
-                 background-color: rgba(0,0,0,0.3);
-                 backdrop-filter: blur(5px);
-            }
-            #sidebar.open {
-                margin-left: 0;
-            }
+        .feature-card:hover .feature-description {
+            max-height: 150px; /* Adjust if text is longer */
+            opacity: 1;
         }
     </style>
 </head>
-<body class="text-gray-900">
+<body class="text-gray-800">
 
-    <div id="main-container">
-        <div id="sidebar" class="flex flex-col text-white p-3">
-            <button id="new-chat-btn" class="w-full text-left p-3 mb-4 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                New Chat
-            </button>
-            <div id="history-list" class="flex-grow overflow-y-auto space-y-1">
-                <!-- Chat history will be populated here -->
+    <!-- Navigation Bar -->
+    <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="text-2xl font-bold text-gray-800">
+                ShikshaSaathi
             </div>
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#about" class="text-gray-600 hover:text-indigo-600 nav-link">About</a>
+                <a href="#features" class="text-gray-600 hover:text-indigo-600 nav-link">Future Plans</a>
+                <a href="#team" class="text-gray-600 hover:text-indigo-600 nav-link">Our Team</a>
+            </div>
+            <a href="./shiksha-saathi.html" class="hidden md:block bg-indigo-600 text-white px-5 py-2 rounded-full hover:bg-indigo-700 transition-colors">
+                Launch App
+            </a>
         </div>
+    </nav>
 
-        <div id="chat-container" class="container mx-auto max-w-4xl h-screen flex flex-col p-4 md:p-6 relative">
-            <header class="text-center mb-4 text-white">
-                <div class="flex items-center justify-between">
-                     <button id="menu-btn" class="md:hidden text-white p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <h1 class="text-4xl font-bold flex items-center justify-center gap-2 flex-grow">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 011.087.124l1.38 1.381a1 1 0 001.414 0l1.38-1.381a.999.999 0 011.087-.124l2.646-1.323a1 1 0 000-1.84l-7-3zM5 9.449l-3 1.5V15a1 1 0 001 1h4a1 1 0 001-1v-4.051l-3-1.5zM15 9.449l-3 1.5V15a1 1 0 001 1h4a1 1 0 001-1v-4.051l-3-1.5z" /></svg>
-                        ShikshaSaathi
-                    </h1>
-                     <div class="w-8"></div> <!-- Spacer -->
-                </div>
-                <div id="lang-switcher" class="mt-2 flex justify-center gap-2">
-                    <button id="lang-en" class="lang-btn">English</button>
-                    <button id="lang-hi" class="lang-btn">हिंदी</button>
-                </div>
-            </header>
+    <!-- Hero Section -->
+    <header class="hero-gradient text-white overflow-hidden">
+        <div class="container mx-auto px-6 py-24 text-center">
+            <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-4 animate-on-scroll" style="transition-delay: 0.1s;">ShikshaSaathi</h1>
+            <p class="text-xl md:text-2xl font-light mb-8 animate-on-scroll" style="transition-delay: 0.2s;">Bridging Knowledge, Building Futures.</p>
+            <p class="max-w-3xl mx-auto text-lg text-indigo-200 mb-12 animate-on-scroll" style="transition-delay: 0.3s;">
+                A national AI learning companion for every student in India.
+            </p>
+            <a href="./shiksha-saathi.html" class="bg-white text-indigo-600 font-bold px-10 py-4 rounded-full text-lg hover:bg-gray-100 transition-transform transform hover:scale-105 inline-block animate-on-scroll" style="transition-delay: 0.4s;">
+                Start Learning Now
+            </a>
+        </div>
+    </header>
 
-            <div class="bg-white/30 backdrop-blur-sm p-3 rounded-xl mb-4 shadow-lg flex justify-between items-center text-white">
-                <div class="flex items-center space-x-2">
-                    <span class="text-yellow-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>
-                    </span>
-                    <span id="points-label" class="font-semibold text-lg">Points: <span id="points">0</span></span>
-                </div>
-                <div id="badges" class="flex items-center space-x-2"></div>
-            </div>
-
-            <div id="chat-window-wrapper" class="bg-white/20 backdrop-blur-sm rounded-xl shadow-inner overflow-hidden">
-                <div id="chat-window" class="p-4 overflow-y-auto flex flex-col space-y-4">
-                    <!-- Chat messages will be populated here -->
-                </div>
-            </div>
-
-             <div id="autocomplete-suggestions" class="hidden"></div>
-
-
-            <form id="chat-form" class="mt-4">
-                <div class="flex items-center bg-white rounded-full p-2 shadow-xl">
-                    <div class="flex-1 relative h-10">
-                        <input type="text" id="chat-input" class="absolute inset-0 w-full h-full bg-transparent text-gray-800 placeholder-gray-500 focus:outline-none px-4 text-lg" autocomplete="off">
-                        <canvas id="waveform-canvas" class="absolute inset-0 w-full h-full hidden rounded-full"></canvas>
+    <!-- Main Content -->
+    <main>
+        <!-- About Section -->
+        <section id="about" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="animate-on-scroll">
+                    <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">What is ShikshaSaathi?</h2>
+                    <div class="grid md:grid-cols-2 gap-12 items-center">
+                        <div>
+                            <h3 class="text-2xl font-semibold mb-4 text-indigo-600">The Challenge in Rural Education</h3>
+                            <p class="mb-4 text-gray-600">
+                                Government schools in India, especially in rural areas, face deep-rooted challenges like teacher shortages, learning gaps from rote memorization, and a growing digital divide. Millions of children are denied access to personalized, modern education, impacting their future and India's growth.
+                            </p>
+                             <p class="text-gray-600">
+                                Without early exposure to tools like AI, these students risk being left behind in the future workforce.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-semibold mb-4 text-indigo-600">Our Solution: An AI-Powered Companion</h3>
+                            <p class="mb-4 text-gray-600">
+                                ShikshaSaathi is a GenAI-powered teaching assistant designed for the smart TVs, tablets, and mobile devices already being deployed in government schools. It acts as a 24/7 AI teacher that students can interact with through voice or text in their own language.
+                            </p>
+                            <p class="text-gray-600">
+                                It's not just a chatbot—it's a complete learning companion built to fill educational gaps and introduce rural children to cutting-edge technology, ensuring no student is left behind.
+                            </p>
+                        </div>
                     </div>
-                    <button type="button" id="mic-btn" class="p-3 rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path d="M5.5 8.5a.5.5 0 01.5.5v1.5a4 4 0 004 4h0a4 4 0 004-4V9a.5.5 0 011 0v1.5a5 5 0 01-5 5h0a5 5 0 01-5-5V9a.5.5 0 01.5-.5z" /></svg>
-                    </button>
-                    <button type="submit" id="send-btn" class="p-3 ml-2 bg-green-500 rounded-full hover:bg-green-600 focus:outline-none transition-colors shadow-md">
-                        <svg id="send-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </button>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- History Context Menu -->
-    <div id="history-menu" class="hidden">
-        <button id="rename-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-            Rename
-        </button>
-        <button id="delete-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-            Delete
-        </button>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div id="delete-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full">
-            <h3 class="text-xl font-bold text-gray-800">Delete Chat?</h3>
-            <p class="text-gray-600 my-2">Are you sure you want to permanently delete this chat?</p>
-            <div class="flex justify-end gap-3 mt-4">
-                <button id="cancel-delete-btn" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button>
-                <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white">Delete</button>
             </div>
-        </div>
-    </div>
+        </section>
 
+        <!-- Future Scope Section -->
+        <section id="features" class="py-20 bg-gray-50">
+            <div class="container mx-auto px-6">
+                 <div class="animate-on-scroll">
+                    <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Upcoming Features: The Future of Learning</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-center">
+                        <!-- Feature Card 1 -->
+                        <div class="bg-white p-8 rounded-lg shadow-md feature-card animate-on-scroll" style="transition-delay: 0.1s;">
+                            <div class="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6 mx-auto">
+                                <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3">Photo-Based Q&A & Language Expansion</h3>
+                            <div class="feature-description">
+                                <p class="text-gray-600 pt-2">Upload a photo of a textbook page or blackboard, and our AI will explain it. We are also expanding to more regional languages like Telugu, Bengali, and Tamil.</p>
+                            </div>
+                        </div>
+                        <!-- Feature Card 2 -->
+                        <div class="bg-white p-8 rounded-lg shadow-md feature-card animate-on-scroll" style="transition-delay: 0.2s;">
+                             <div class="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6 mx-auto">
+                                <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.707.707M12 21v-1m-6.364-1.636l.707-.707" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3">Adaptive Learning Paths</h3>
+                            <div class="feature-description">
+                                <p class="text-gray-600 pt-2">ShikshaSaathi will track student progress and tailor explanations and quizzes to their individual learning speed, ensuring every student builds a strong foundation.</p>
+                            </div>
+                        </div>
+                        <!-- Feature Card 3 -->
+                        <div class="bg-white p-8 rounded-lg shadow-md feature-card animate-on-scroll" style="transition-delay: 0.3s;">
+                            <div class="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6 mx-auto">
+                               <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3">Empathy Coach & Offline Mode</h3>
+                            <div class="feature-description">
+                                <p class="text-gray-600 pt-2">Our AI will learn to detect frustration in a student's voice and suggest a new way to learn. An offline mode will also allow learning even without an internet connection.</p>
+                            </div>
+                        </div>
+                         <!-- Feature Card 4 -->
+                        <div class="bg-white p-8 rounded-lg shadow-md feature-card animate-on-scroll" style="transition-delay: 0.1s;">
+                            <div class="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6 mx-auto">
+                               <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3">Real-World Integration</h3>
+                             <div class="feature-description">
+                                <p class="text-gray-600 pt-2">Take a photo of any object in the real world, like a plant or an experiment, and our AI will build an instant, interactive lesson around it.</p>
+                            </div>
+                        </div>
+                        <!-- Feature Card 5 -->
+                        <div class="bg-white p-8 rounded-lg shadow-md feature-card animate-on-scroll" style="transition-delay: 0.2s;">
+                            <div class="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6 mx-auto">
+                               <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3">Collaborative Learning</h3>
+                            <div class="feature-description">
+                                <p class="text-gray-600 pt-2">Empowering teachers and students to contribute questions and answers to a shared, AI-moderated knowledge base, creating a collaborative learning community.</p>
+                            </div>
+                        </div>
+                        <!-- Feature Card 6 -->
+                        <div class="bg-white p-8 rounded-lg shadow-md feature-card animate-on-scroll" style="transition-delay: 0.3s;">
+                            <div class="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6 mx-auto">
+                               <svg class="h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3">Advanced Gamification</h3>
+                            <div class="feature-description">
+                                <p class="text-gray-600 pt-2">Engage students with leaderboards, progress dashboards, and team-based challenges to make learning a fun and rewarding experience for everyone.</p>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        </section>
+
+        <!-- Team Section -->
+        <section id="team" class="py-20 bg-white">
+            <div class="container mx-auto px-6 text-center animate-on-scroll">
+                <h2 class="text-3xl md:text-4xl font-bold mb-12">Meet the Team</h2>
+                <div class="flex flex-wrap justify-center gap-8 md:gap-12">
+                    <a href="https://www.linkedin.com/in/purva-tawade-250072317/" target="_blank" class="text-lg font-medium text-gray-700 hover:text-indigo-600 transition-colors">Purva Tawade</a>
+                    <a href="https://www.linkedin.com/in/talha-chougle-15a063334/" target="_blank" class="text-lg font-medium text-gray-700 hover:text-indigo-600 transition-colors">Talha Chougle</a>
+                    <a href="https://github.com/amrshaikh" target="_blank" class="text-lg font-medium text-gray-700 hover:text-indigo-600 transition-colors">Amr Shaikh</a>
+                    <a href="https://www.linkedin.com/in/uzair-karedia-61080a348/" target="_blank" class="text-lg font-medium text-gray-700 hover:text-indigo-600 transition-colors">Uzair Karedia</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="hero-gradient">
+        <div class="container mx-auto px-6 py-8 text-center text-indigo-200">
+            <p>&copy; Made by Team Pragati.</p>
+        </div>
+    </footer>
 
     <script>
-        // --- DOM ELEMENTS ---
-        const chatWindow = document.getElementById('chat-window');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-        const micBtn = document.getElementById('mic-btn');
-        const sendBtn = document.getElementById('send-btn');
-        const pointsEl = document.getElementById('points');
-        const badgesEl = document.getElementById('badges');
-        const langEnBtn = document.getElementById('lang-en');
-        const langHiBtn = document.getElementById('lang-hi');
-        const waveformCanvas = document.getElementById('waveform-canvas');
-        const canvasCtx = waveformCanvas.getContext('2d');
-        const newChatBtn = document.getElementById('new-chat-btn');
-        const historyList = document.getElementById('history-list');
-        const sidebar = document.getElementById('sidebar');
-        const menuBtn = document.getElementById('menu-btn');
-        const historyMenu = document.getElementById('history-menu');
-        const renameBtn = document.getElementById('rename-btn');
-        const deleteBtn = document.getElementById('delete-btn');
-        const deleteModal = document.getElementById('delete-modal');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-        const autocompleteSuggestions = document.getElementById('autocomplete-suggestions');
-
-        // --- STATE MANAGEMENT ---
-        let conversationHistory = [];
-        let allChats = {};
-        let activeChatId = null;
-        let points = 0;
-        let currentLanguage = 'en-US';
-        let isRecording = false;
-    // Removed: let currentlyPlayingAudio = null; (no longer used)
-        let audioContext, analyser, sourceNode, dataArray, animationFrameId, mediaStream;
-        let chatToDelete = null;
-        let chatToRename = null;
-
-        const badges = [
-            { threshold: 1, name: { "en-US": "First Step", "hi-IN": "पहला कदम" }, icon: "🌱", earned: false },
-            { threshold: 5, name: { "en-US": "Curious Learner", "hi-IN": "जिज्ञासु शिक्षार्थी" }, icon: "💡", earned: false },
-            { threshold: 10, name: { "en-US": "Knowledge Seeker", "hi-IN": "ज्ञान साधक" }, icon: "📚", earned: false },
-            { threshold: 20, name: { "en-US": "AI Explorer", "hi-IN": "एआई एक्सप्लोरर" }, icon: "🚀", earned: false },
-        ];
-        
-        const uiStrings = {
-            "en-US": {
-                initialMessage: "Hello! I am ShikshaSaathi. Ask me anything by typing or using the microphone.",
-                inputPlaceholder: "Ask your question here...",
-                pointsLabel: "Points:",
-                badgeEarned: "New Badge Earned!",
-                getBadgeTitle: (b) => `${b.name[currentLanguage]} (${b.earned ? 'Earned!' : `Ask ${b.threshold} questions`})`,
-                speechError: "Sorry, I couldn't understand your voice. Please try again.",
-                aiError: "Sorry, I couldn't get a response. Please ask again.",
-                connectionError: "An error occurred connecting to the AI. Please check your connection and try again.",
-                imageError: "Sorry, I couldn't create an image for that. Please ask something else.",
-                imageGenError: "An error occurred while generating the image. Please try again.",
-                suggestions: [
-                    "Explain the water cycle",
-                    "Tell me about the Mughal Empire",
-                    "What is photosynthesis?",
-                    "Help me with a math problem",
-                    "Who was Albert Einstein?",
-                    "How do volcanoes erupt?"
-                ]
-            },
-            "hi-IN": {
-                initialMessage: "नमस्ते! मैं शिक्षा-साथी हूँ। आप मुझसे कोई भी सवाल पूछ सकते हैं। टाइप करें या माइक का बटन दबा कर बोलें।",
-                inputPlaceholder: "यहाँ अपना सवाल पूछें...",
-                pointsLabel: "अंक:",
-                badgeEarned: "नया बैज मिला!",
-                getBadgeTitle: (b) => `${b.name[currentLanguage]} (${b.earned ? 'मिल गया!' : `${b.threshold} सवाल पूछें`})`,
-                speechError: "माफ़ करें, मुझे आपकी आवाज़ समझ नहीं आई। कृपया फिर से प्रयास करें।",
-                aiError: "माफ़ करें, मैं जवाब नहीं दे सका। कृपया फिर से पूछें।",
-                connectionError: "AI से कनेक्ट करने में कोई त्रुटि हुई। कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।",
-                imageError: "माफ़ करें, मैं इसके लिए कोई चित्र नहीं बना सका। कृपया कुछ और पूछें।",
-                imageGenError: "चित्र बनाने में कोई त्रुटि हुई। कृपया पुन: प्रयास करें।",
-                 suggestions: [
-                    "जल चक्र के बारे में बताएं",
-                    "मुझे मुगल साम्राज्य के बारे में बताएं",
-                    "प्रकाश संश्लेषण क्या है?",
-                    "गणित की समस्या में मेरी मदद करें",
-                    "अल्बर्ट आइंस्टीन कौन थे?",
-                    "ज्वालामुखी कैसे फटते हैं?"
-                ]
-            }
-        };
-
-        // --- SPEECH RECOGNITION SETUP ---
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-        } else {
-            micBtn.disabled = true;
-        }
-
-        // --- EVENT LISTENERS ---
-        document.addEventListener('DOMContentLoaded', initializeApp);
-        chatForm.addEventListener('submit', handleSendMessage);
-        langEnBtn.addEventListener('click', () => setLanguage('en-US'));
-        langHiBtn.addEventListener('click', () => setLanguage('hi-IN'));
-        newChatBtn.addEventListener('click', startNewChat);
-        menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
-        chatInput.addEventListener('input', handleAutocomplete);
-        chatInput.addEventListener('blur', () => {
-             // Delay hiding to allow click on suggestion
-            setTimeout(() => autocompleteSuggestions.classList.add('hidden'), 150);
-        });
-        
-        // Modal and Menu listeners
-        renameBtn.addEventListener('click', handleRenameClick);
-        deleteBtn.addEventListener('click', handleDeleteClick);
-        cancelDeleteBtn.addEventListener('click', () => deleteModal.classList.add('hidden'));
-        confirmDeleteBtn.addEventListener('click', confirmDelete);
-        
-        // Close menu if clicked outside
-        document.addEventListener('click', (e) => {
-            if (!historyMenu.contains(e.target) && !e.target.closest('.options-btn')) {
-                historyMenu.classList.add('hidden');
-            }
-        });
-
-        if (recognition) {
-            micBtn.addEventListener('click', toggleRecording);
-            recognition.onresult = handleSpeechResult;
-            recognition.onstart = () => updateRecordingUI(true);
-            recognition.onerror = (e) => addMessage('ai', uiStrings[currentLanguage].speechError, 'text');
-        }
-
-        // --- APP INITIALIZATION ---
-        function initializeApp() {
-            loadStateFromStorage();
-            renderHistorySidebar();
-            if (!activeChatId || !allChats[activeChatId]) {
-                startNewChat();
-            } else {
-                loadChat(activeChatId);
-            }
-        }
-        
-        // --- CHAT & HISTORY MANAGEMENT ---
-        function startNewChat() {
-            const newId = Date.now().toString();
-            activeChatId = newId;
-            conversationHistory = [];
-            allChats[newId] = { title: "New Chat", history: [] };
-            
-            chatWindow.innerHTML = '';
-            addAiTextMessage(uiStrings[currentLanguage].initialMessage, false);
-            autocompleteSuggestions.classList.add('hidden');
-
-
-            saveStateToStorage();
-            renderHistorySidebar();
-            if(sidebar.classList.contains('open')) sidebar.classList.remove('open');
-        }
-
-        function loadChat(chatId) {
-            if (!allChats[chatId]) return;
-            activeChatId = chatId;
-            conversationHistory = allChats[chatId].history;
-            autocompleteSuggestions.classList.add('hidden');
-            
-            chatWindow.innerHTML = '';
-            if (conversationHistory.length === 0) {
-                 addAiTextMessage(uiStrings[currentLanguage].initialMessage, false);
-            } else {
-                conversationHistory.forEach(msg => {
-                    if (msg.role === 'user') {
-                        addMessage('user', msg.parts[0].text, 'text');
-                    } else if (msg.role === 'model') {
-                        addAiTextMessage(msg.parts[0].text, false);
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Navigation highlighting ---
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const navObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('nav-link-active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('nav-link-active');
+                            }
+                        });
                     }
                 });
-            }
+            }, { threshold: 0.5 });
+            sections.forEach(section => navObserver.observe(section));
 
-
-            renderHistorySidebar();
-            saveStateToStorage();
-             if(sidebar.classList.contains('open')) sidebar.classList.remove('open');
-        }
-
-        function renderHistorySidebar() {
-            historyList.innerHTML = '';
-            Object.keys(allChats).sort((a,b) => b-a).forEach(chatId => {
-                const chat = allChats[chatId];
-                const item = document.createElement('div');
-                item.className = `history-item ${chatId === activeChatId ? 'active' : ''}`;
-                item.dataset.chatId = chatId;
-
-                const titleSpan = document.createElement('span');
-                titleSpan.className = 'history-title';
-                titleSpan.textContent = chat.title;
-                titleSpan.onclick = () => loadChat(chatId);
-
-                const optionsBtn = document.createElement('button');
-                optionsBtn.className = 'options-btn';
-                optionsBtn.innerHTML = '•••';
-                optionsBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    openHistoryMenu(chatId, optionsBtn);
-                }
-                
-                item.appendChild(titleSpan);
-                item.appendChild(optionsBtn);
-                historyList.appendChild(item);
-            });
-        }
-        
-        // --- HISTORY ITEM ACTIONS ---
-        function openHistoryMenu(chatId, button) {
-            const rect = button.getBoundingClientRect();
-            historyMenu.style.top = `${rect.bottom + 5}px`;
-            historyMenu.style.left = `${rect.left - 100}px`;
-            historyMenu.classList.remove('hidden');
-            chatToRename = chatId;
-            chatToDelete = chatId;
-        }
-        
-        function handleRenameClick() {
-            historyMenu.classList.add('hidden');
-            const itemToRename = document.querySelector(`.history-item[data-chat-id="${chatToRename}"]`);
-            const titleSpan = itemToRename.querySelector('.history-title');
-            
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = titleSpan.textContent;
-            input.className = 'bg-transparent border-b-2 border-white w-full focus:outline-none';
-            
-            titleSpan.replaceWith(input);
-            input.focus();
-
-            const saveRename = () => {
-                 const newTitle = input.value.trim();
-                 if (newTitle) {
-                     allChats[chatToRename].title = newTitle;
-                     saveStateToStorage();
-                 }
-                 renderHistorySidebar(); // Redraw to restore span
-            };
-
-            input.addEventListener('blur', saveRename);
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') input.blur();
-                if (e.key === 'Escape') {
-                    input.value = allChats[chatToRename].title; // revert
-                    input.blur();
-                }
-            });
-        }
-
-        function handleDeleteClick() {
-            historyMenu.classList.add('hidden');
-            deleteModal.classList.remove('hidden');
-        }
-
-        function confirmDelete() {
-            delete allChats[chatToDelete];
-            saveStateToStorage();
-            deleteModal.classList.add('hidden');
-
-            if (activeChatId === chatToDelete) {
-                const remainingChatIds = Object.keys(allChats);
-                if (remainingChatIds.length > 0) {
-                    loadChat(remainingChatIds.sort((a,b) => b-a)[0]); // load most recent
-                } else {
-                    startNewChat();
-                }
-            } else {
-                renderHistorySidebar();
-            }
-        }
-
-        // --- LOCAL STORAGE ---
-        function saveStateToStorage() {
-            const appState = {
-                allChats,
-                activeChatId,
-                points,
-                badges
-            };
-            localStorage.setItem('shikshaSaathiState', JSON.stringify(appState));
-        }
-
-        function loadStateFromStorage() {
-            const savedState = localStorage.getItem('shikshaSaathiState');
-            if (savedState) {
-                const parsedState = JSON.parse(savedState);
-                allChats = parsedState.allChats || {};
-                activeChatId = parsedState.activeChatId || null;
-                points = parsedState.points || 0;
-                // Make sure badges state is loaded correctly
-                const savedBadges = parsedState.badges || [];
-                badges.forEach(b => {
-                    const saved = savedBadges.find(sb => sb.icon === b.icon);
-                    if (saved) b.earned = saved.earned;
-                });
-            }
-            updatePointsDisplay();
-            updateBadgesDisplay();
-        }
-
-        // --- UI & LANGUAGE FUNCTIONS ---
-        function setLanguage(lang) {
-            currentLanguage = lang;
-            if(recognition) recognition.lang = lang;
-            
-            langEnBtn.classList.toggle('active', lang === 'en-US');
-            langHiBtn.classList.toggle('active', lang === 'hi-IN');
-            
-            const strings = uiStrings[lang];
-            
-            chatInput.placeholder = strings.inputPlaceholder;
-            document.getElementById('points-label').innerHTML = `${strings.pointsLabel} <span id="points">${points}</span>`;
-            updateBadgesDisplay();
-
-            // Reload current chat to update language of initial message if it's a new chat
-            if (allChats[activeChatId] && allChats[activeChatId].history.length === 0) {
-                 chatWindow.innerHTML = '';
-                 addAiTextMessage(strings.initialMessage, false);
-            }
-        }
-        
-        function handleAutocomplete() {
-            const inputText = chatInput.value.trim().toLowerCase();
-            autocompleteSuggestions.innerHTML = '';
-
-            if (inputText.length < 2) {
-                autocompleteSuggestions.classList.add('hidden');
-                return;
-            }
-
-            const filteredSuggestions = uiStrings[currentLanguage].suggestions.filter(s => 
-                s.toLowerCase().includes(inputText)
-            );
-
-            if (filteredSuggestions.length > 0) {
-                autocompleteSuggestions.classList.remove('hidden');
-                filteredSuggestions.forEach(suggestion => {
-                    const item = document.createElement('div');
-                    item.className = 'suggestion-item';
-                    item.textContent = suggestion;
-                    item.onclick = () => {
-                        chatInput.value = suggestion;
-                        autocompleteSuggestions.classList.add('hidden');
-                        chatInput.focus();
-                    };
-                    autocompleteSuggestions.appendChild(item);
-                });
-            } else {
-                autocompleteSuggestions.classList.add('hidden');
-            }
-        }
-
-
-        function updateRecordingUI(isNowRecording) {
-            isRecording = isNowRecording;
-            micBtn.classList.toggle('recording', isRecording);
-            micBtn.classList.toggle('bg-red-200', isRecording);
-            const isInputVisible = !isNowRecording;
-            chatInput.classList.toggle('hidden', !isInputVisible);
-            waveformCanvas.classList.toggle('hidden', isInputVisible);
-            if (!isInputVisible) {
-                const container = waveformCanvas.parentElement;
-                waveformCanvas.width = container.offsetWidth * window.devicePixelRatio;
-                waveformCanvas.height = container.offsetHeight * window.devicePixelRatio;
-            }
-            const sendIcon = document.getElementById('send-icon');
-            if (isRecording) {
-                sendIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />`;
-            } else {
-                sendIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />`;
-            }
-        }
-
-        // --- CORE CHAT FUNCTIONS ---
-        async function toggleRecording() {
-            if (isRecording) {
-                if (recognition) recognition.stop();
-                if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
-                if (audioContext) audioContext.close();
-                cancelAnimationFrame(animationFrameId);
-                updateRecordingUI(false);
-            } else {
-                try {
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    if (recognition) recognition.start();
-                    setupAudioVisualizer();
-                } catch (err) {
-                    console.error("Microphone access denied:", err);
-                    addAiTextMessage("I need microphone access to hear you. Please enable it in your browser settings.", false);
-                }
-            }
-        }
-
-        function setupAudioVisualizer() {
-            if (!mediaStream) return;
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            sourceNode = audioContext.createMediaStreamSource(mediaStream);
-            sourceNode.connect(analyser);
-            analyser.fftSize = 512;
-            const bufferLength = analyser.frequencyBinCount;
-            dataArray = new Uint8Array(bufferLength);
-            drawWaveform();
-        }
-        
-        function drawWaveform() {
-            animationFrameId = requestAnimationFrame(drawWaveform);
-            analyser.getByteFrequencyData(dataArray);
-            canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
-            canvasCtx.fillStyle = 'rgba(55, 65, 81, 0.8)';
-            const barWidth = 2; 
-            const barSpacing = 3;
-            const numBars = Math.floor(waveformCanvas.width / (barWidth + barSpacing));
-            const step = Math.floor(dataArray.length / numBars);
-            let x = 0;
-            for (let i = 0; i < numBars; i++) {
-                let sum = 0;
-                for (let j = 0; j < step; j++) sum += dataArray[i * step + j];
-                const avg = sum / step;
-                const barHeight = (avg / 255) * waveformCanvas.height * 0.9;
-                if (barHeight < 1) continue;
-                const y = (waveformCanvas.height - barHeight) / 2;
-                canvasCtx.fillRect(x, y, barWidth, barHeight);
-                x += barWidth + barSpacing;
-            }
-        }
-        
-        function handleSpeechResult(event) {
-            const speechResult = event.results[0][0].transcript;
-            chatInput.value = speechResult;
-        }
-
-        async function handleSendMessage(e) {
-            e.preventDefault();
-            if (isRecording) {
-                toggleRecording();
-                return;
-            }
-            const userMessage = chatInput.value.trim();
-            if (!userMessage) return;
-            
-            autocompleteSuggestions.classList.add('hidden');
-            addMessage('user', userMessage, 'text');
-
-            const isFirstMessage = conversationHistory.length === 0;
-            conversationHistory.push({ role: "user", parts: [{ text: userMessage }] });
-            
-            if (isFirstMessage) {
-                allChats[activeChatId].title = userMessage;
-                renderHistorySidebar();
-            }
-            allChats[activeChatId].history = [...conversationHistory];
-            saveStateToStorage();
-
-            chatInput.value = '';
-            updatePoints();
-            
-            if (userMessage.toLowerCase().includes('draw') || userMessage.toLowerCase().includes('चित्र')) {
-                 generateImage(userMessage);
-            } else {
-                await getChatResponse();
-            }
-        }
-
-        function addMessage(sender, content, type) {
-            const messageWrapper = document.createElement('div');
-            messageWrapper.className = `w-full flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-            const bubble = document.createElement('div');
-            bubble.className = `chat-bubble ${sender === 'user' ? 'user-bubble' : 'ai-bubble'}`;
-            const contentContainer = document.createElement('div');
-            
-            if (type === 'text') {
-                contentContainer.textContent = content;
-            } else if (type === 'image') { // Only for AI generated images
-                bubble.classList.add('p-2', 'bg-white');
-                const img = document.createElement('img');
-                img.src = content;
-                img.alt = "Generated image";
-                img.className = 'rounded-lg w-full max-w-sm';
-                contentContainer.appendChild(img);
-            } else if (type === 'loading') {
-                contentContainer.innerHTML = `<div class="loader"></div>`;
-                bubble.id = 'loading-bubble';
-            }
-            
-            bubble.appendChild(contentContainer);
-            messageWrapper.appendChild(bubble);
-            chatWindow.appendChild(messageWrapper);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            return bubble;
-        }
-
-
-        function addAiTextMessage(text, addToHistory = true) {
-            const aiBubble = addMessage('ai', text, 'text');
-            if (addToHistory) {
-                conversationHistory.push({ role: "model", parts: [{ text: text }] });
-                allChats[activeChatId].history = conversationHistory;
-                saveStateToStorage();
-            }
-            // ...speak button and TTS removed...
-        }
-
-        // --- GEMINI API CALLS ---
-        async function getChatResponse() {
-            addMessage('ai', '', 'loading');
-            
-            const systemPrompt = `You are ShikshaSaathi, a friendly AI teacher for children in India. Respond in ${currentLanguage === 'hi-IN' ? 'Hindi' : 'English'}. Keep answers simple, encouraging, and short.`;
-
-            try {
-                // Only send user and model messages to Gemini
-                const geminiHistory = conversationHistory.map(msg => {
-                    if (msg.role === 'user') {
-                        return { role: 'user', parts: [{ text: msg.parts[0].text }] };
-                    } else {
-                        return { role: 'model', parts: [{ text: msg.parts[0].text }] };
+            // --- Scroll animations ---
+            const animationElements = document.querySelectorAll('.animate-on-scroll');
+            const animationObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target);
                     }
                 });
-                const response = await fetch('/.netlify/functions/gemini-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: 'chat',
-                        payload: {
-                            contents: geminiHistory
-                        }
-                    })
-                });
-
-                if(!response.ok) throw new Error(`API Error: ${response.statusText}`);
-                const result = await response.json();
-                document.getElementById('loading-bubble')?.parentElement.remove();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (text) {
-                    addAiTextMessage(text, true);
-                } else {
-                    addAiTextMessage(uiStrings[currentLanguage].aiError, false);
-                }
-            } catch (error) {
-                console.error("Chat API Error:", error);
-                document.getElementById('loading-bubble')?.parentElement.remove();
-                addAiTextMessage(uiStrings[currentLanguage].connectionError, false);
-            }
-        }
-
-        async function generateImage(prompt) {
-             addMessage('ai', '', 'loading');
-             try {
-                const response = await fetch('/.netlify/functions/gemini-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: 'imagen-3.0-generate-002',
-                        endpoint: 'predict',
-                        payload: {
-                            instances: { prompt: `A very simple, clear, colorful educational diagram for a child: ${prompt}` },
-                            parameters: { "sampleCount": 1 }
-                        }
-                    })
-                });
-
-                if(!response.ok) throw new Error(`API Error: ${response.statusText}`);
-                const result = await response.json();
-                document.getElementById('loading-bubble')?.parentElement.remove();
-                if (result.predictions?.[0]?.bytesBase64Encoded) {
-                    addMessage('ai', `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`, 'image');
-                } else {
-                    addAiTextMessage(uiStrings[currentLanguage].imageError, false);
-                }
-            } catch (error) {
-                console.error("Image API Error:", error);
-                document.getElementById('loading-bubble')?.parentElement.remove();
-                addAiTextMessage(uiStrings[currentLanguage].imageGenError, false);
-            }
-        }
-        
-    // ...generateSpeech and TTS logic removed...
-
-        // --- GAMIFICATION & UTILITIES ---
-        function updatePoints() {
-            points++;
-            updatePointsDisplay();
-            checkAndAwardBadges();
-            saveStateToStorage();
-        }
-        
-        function updatePointsDisplay() {
-            document.getElementById('points').textContent = points;
-        }
-
-        function checkAndAwardBadges() {
-            let badgeAwarded = false;
-            badges.forEach(badge => {
-                if (!badge.earned && points >= badge.threshold) {
-                    badge.earned = true;
-                    badgeAwarded = true;
-                    showBadgeNotification(badge);
-                }
-            });
-            if (badgeAwarded) updateBadgesDisplay();
-        }
-        
-        function showBadgeNotification(badge) {
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-5 right-5 bg-white p-4 rounded-lg shadow-xl text-center text-gray-800 border-2 border-yellow-400 z-50';
-            notification.innerHTML = `<div class="text-2xl">${badge.icon}</div><div class="font-bold">${uiStrings[currentLanguage].badgeEarned}</div><div>${badge.name[currentLanguage]}</div>`;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 3000);
-        }
-
-        function updateBadgesDisplay() {
-            badgesEl.innerHTML = '';
-            badges.forEach(badge => {
-                const badgeEl = document.createElement('span');
-                badgeEl.className = `badge ${badge.earned ? 'earned' : 'not-earned'}`;
-                badgeEl.textContent = badge.icon;
-                badgeEl.title = uiStrings[currentLanguage].getBadgeTitle(badge);
-                badgesEl.appendChild(badgeEl);
-            });
-        }
-        
-    // ...audio utility functions removed...
+            }, { threshold: 0.1 });
+            animationElements.forEach(el => animationObserver.observe(el));
+        });
     </script>
+
 </body>
 </html>
+
