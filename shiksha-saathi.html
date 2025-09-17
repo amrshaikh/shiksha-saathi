@@ -13,7 +13,9 @@
             overflow: hidden;
         }
         #main-container {
-            height: 100vh;
+            /* This is the key fix: Use dvh instead of vh for mobile compatibility */
+            height: 100vh; /* Fallback for older browsers */
+            height: 100dvh; /* Dynamic viewport height for modern browsers */
             display: flex;
         }
         #sidebar {
@@ -221,7 +223,7 @@
             </div>
         </div>
 
-        <div id="chat-container" class="container mx-auto max-w-4xl h-screen flex flex-col p-4 pb-6 md:p-6 relative">
+        <div id="chat-container" class="container mx-auto max-w-4xl h-full flex flex-col p-4 pb-6 md:p-6 relative">
             <header class="text-center mb-4 text-white">
                 <div class="flex items-center justify-between">
                        <button id="menu-btn" class="md:hidden text-white p-2">
@@ -474,10 +476,12 @@
                  addAiTextMessage(uiStrings[currentLanguage].initialMessage, false);
             } else {
                 conversationHistory.forEach(msg => {
+                    // Check for both old and new message formats for backward compatibility
+                    const messageText = msg.parts?.[0]?.text || msg.content;
                     if (msg.role === 'user') {
-                        addMessage('user', msg.parts[0].text, 'text');
+                        addMessage('user', messageText, 'text');
                     } else if (msg.role === 'model') {
-                        addAiTextMessage(msg.parts[0].text, false);
+                        addAiTextMessage(messageText, false);
                     }
                 });
             }
@@ -756,7 +760,7 @@
             conversationHistory.push({ role: "user", parts: [{ text: userMessage }] });
             
             if (isFirstMessage) {
-                allChats[activeChatId].title = userMessage;
+                allChats[activeChatId].title = userMessage.substring(0, 25);
                 renderHistorySidebar();
             }
             allChats[activeChatId].history = [...conversationHistory];
@@ -782,7 +786,7 @@
             if (type === 'text') {
                 // Use the formatting helper here
                 contentContainer.innerHTML = formatBoldText(content);
-            } else if (type === 'image') { // Only for AI generated images
+            } else if (type === 'image') { 
                 bubble.classList.add('p-2', 'bg-white');
                 const img = document.createElement('img');
                 img.src = content;
@@ -815,14 +819,12 @@
         async function getChatResponse() {
             addMessage('ai', '', 'loading');
             
-            const systemPrompt = `You are ShikshaSaathi, a friendly AI teacher for children in India. Respond in ${currentLanguage === 'hi-IN' ? 'Hindi' : 'English'}. Keep answers simple, encouraging, and short.`;
+            const systemPrompt = `You are ShikshaSaathi, a friendly AI teacher for children in India. Respond in ${currentLanguage === 'hi-IN' ? 'Hindi' : 'English'}. Keep answers simple, encouraging, and short. Use markdown for bolding important terms (e.g., **word**).`;
 
             try {
-                // The fetch URL is now pointing to our Netlify function
                 const response = await fetch(`/.netlify/functions/gemini-proxy`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // We send the history and prompt to our function
                     body: JSON.stringify({ 
                         conversationHistory: conversationHistory, 
                         systemPrompt: systemPrompt 
@@ -847,7 +849,6 @@
 
         // --- GAMIFICATION & UTILITIES ---
         function formatBoldText(text) {
-            // Escape HTML characters to prevent XSS attacks
             const escapedText = text
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
@@ -855,7 +856,6 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
             
-            // Replace markdown-style bold with <strong> tags
             const formattedText = escapedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             return formattedText;
         }
