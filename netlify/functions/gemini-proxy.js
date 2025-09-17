@@ -1,79 +1,79 @@
-/**
- * Netlify Function: OpenRouter API Proxy
- *
- * Proxies requests from the frontend to the OpenRouter API securely.
- *
- * Supported payloads:
- * - Chat: { type: 'chat', payload: { messages: [...] } }
- * - Image: { type: 'image', payload: { model: '...', prompt: '...' } }
- *
- * Requires OPENROUTER_API_KEY as an environment variable in Netlify.
- */
-
-exports.handler = async (event) => {
-    // Get OpenRouter API key from environment
-    const API_KEY = process.env.OPENROUTER_API_KEY;
-    if (!API_KEY) {
-        console.error("OPENROUTER_API_KEY not found in environment.");
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: "API key not found." }),
-        };
+// The 'fetch' function is available globally in Netlify functions
+exports.handler = async function(event) {
+    // Only allow POST requests
+    if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
-    // Forward {model, messages} directly to OpenRouter
-    let body;
     try {
-        body = JSON.parse(event.body);
-        console.log("Incoming request body:", body);
-    } catch (e) {
-        console.error("Invalid request body:", event.body, e);
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "Invalid request body.", details: event.body }),
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        if (!GEMINI_API_KEY) {
+            throw new Error("GEMINI_API_KEY is not set in environment variables.");
+        }
+
+        const { conversationHistory, systemPrompt } = JSON.parse(event.body);
+
+        // Map the conversation history to the format Google's API expects.
+        // This handles cases where the frontend might send different structures.
+        const formattedHistory = conversationHistory.map(message => {
+            // FIX: Check for the format {role, content} and convert it.
+            if (message.role && typeof message.content !== 'undefined') {
+                return {
+                    role: message.role === 'ai' ? 'model' : message.role, // Gemini API uses 'model' for AI responses
+                    parts: [{ text: message.content }]
+                };
+            }
+            // Also handle the legacy {sender, content} format just in case.
+            if (message.sender && typeof message.content !== 'undefined') {
+                return {
+                    role: message.sender === 'ai' ? 'model' : 'user',
+                    parts: [{ text: message.content }]
+                };
+            }
+            // If the message is already in the correct {role, parts} format, return it unchanged.
+            return message;
+        });
+
+        const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+        
+        const payload = {
+            contents: formattedHistory,
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            }
         };
-    }
 
-    const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-    console.log("Proxying to OpenRouter:", { apiUrl, body });
-
-    try {
-        const apiResponse = await fetch(apiUrl, {
+        const response = await fetch(googleApiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(payload),
         });
 
-        console.log("OpenRouter API status:", apiResponse.status);
-        const text = await apiResponse.text();
-        console.log("OpenRouter API raw response:", text);
-        let responseData;
-        try {
-            responseData = text ? JSON.parse(text) : {};
-        } catch (e) {
-            responseData = { error: 'Invalid JSON response from OpenRouter API', raw: text };
+        if (!response.ok) {
+             const errorBody = await response.text();
+             console.error("Google API Error:", errorBody);
+             return {
+                 statusCode: response.status,
+                 body: JSON.stringify({ error: `Google API Error: ${response.statusText}`, details: errorBody })
+             };
         }
 
-        if (!apiResponse.ok) {
-            console.error("OpenRouter API error:", responseData);
-            return {
-                statusCode: apiResponse.status,
-                body: JSON.stringify({ error: responseData.error || { message: "An unknown API error occurred." }, details: responseData }),
-            };
-        }
+        const data = await response.json();
 
         return {
             statusCode: 200,
-            body: JSON.stringify(responseData),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
         };
+
     } catch (error) {
-        console.error("Error contacting OpenRouter API:", error);
+        console.error("Proxy Function Error:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to connect to the OpenRouter API.', details: error.toString() }),
+            body: JSON.stringify({ error: `Internal Server Error: ${error.message}` }),
         };
     }
 };
+
